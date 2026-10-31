@@ -33,95 +33,122 @@
       return window.AiPlatformPoC.Vyral.payload(response, window.location.href, navigator.userAgent, key, storage);
     }
   });
-// --- ESTRATÉGIA DO LEONARDO.AI ---
+
+  // --- ESTRATÉGIA DO LEONARDO AI ---
   PlatformManager.register({
-    name: 'Leonardo.Ai',
+    name: 'Leonardo AI',
     matches: hostname => hostname.includes('leonardo.ai'),
     extract: async (rawCookies) => {
-      const key = window.prompt('Chave exata da conta Leonardo cadastrada no portal:', 'conta-piloto-01');
-      if (key === null) throw new Error('Exportação cancelada.');
-
-      let token = "";
+      let key = "conta-piloto-01";
+      
       try {
-        if (window.AiPlatformPoC && window.AiPlatformPoC.Leonardo) {
-          token = await window.AiPlatformPoC.Leonardo.fetchSession(fetch);
+        const promptResult = window.prompt('Chave exata da conta Leonardo AI cadastrada no portal:', 'conta-piloto-01');
+        if (promptResult !== null && promptResult.trim() !== '') {
+          key = promptResult.trim();
         }
-      } catch (e) { console.error('[AI Platform PoC] Erro ao buscar token do Leonardo:', e); }
+      } catch (e) {
+        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
+      }
+
+      const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
 
       const cookieMap = {};
-      rawCookies.split(';').forEach(pair => {
+      combinedCookies.split(';').forEach(pair => {
         const parts = pair.trim().split('=');
-        if (parts.length >= 2) cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        if (parts.length >= 2 && parts[0].trim() !== '') {
+          cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        }
       });
 
-      // Busca dinâmica para apanhar os cookies independentemente da versão de Auth do Leonardo
-      const targetNames = ["_vcrcs", "cf_clearance", "__cf_bm"];
+      // Filtro para o novo sistema "Better Auth" do Leonardo AI
       const formattedPairs = [];
-      
       Object.keys(cookieMap).forEach(cookieName => {
-        if (
-          targetNames.includes(cookieName) || 
-          cookieName.startsWith("__Secure-next-auth") ||
-          cookieName.startsWith("__Secure-better-auth")
-        ) {
+        if (cookieName.includes("better-auth.session_token") || cookieName.includes("better-auth.session_data")) {
           formattedPairs.push(`${cookieName}=${cookieMap[cookieName]}`);
         }
       });
 
-      // TRAVA DE SEGURANÇA: Se o filtro falhar, envia a string bruta em vez de vazio
-      const finalCookies = formattedPairs.length > 0 ? formattedPairs.join('; ') : rawCookies;
+      const finalCookies = formattedPairs.join('; ');
+
+      // Alerta de segurança caso o novo cookie principal de login falhe
+      const sessionTokenKey = Object.keys(cookieMap).find(k => k.includes("better-auth.session_token"));
+      if (!sessionTokenKey) {
+        console.error("[AI Platform PoC] Cookies disponíveis para leitura:", Object.keys(cookieMap));
+        alert("ERRO: O token de sessão do Better Auth está ausente. Verifique se tem o login feito no Leonardo AI.");
+      }
 
       return {
         "accountKey": key,
-        "label": `Leonardo (${key})`,
+        "label": `Leonardo 01 (Maestro)`,
         "planType": "maestro",
         "toolId": "leonardo",
         "chatgptAccountId": "",
-        "accessToken": token,
+        "accessToken": "",
         "cookies": finalCookies,
         "userAgent": navigator.userAgent
       };
     }
   });
-
-  // --- ESTRATÉGIA DO HIGGSFIELD ---
+  // --- ESTRATÉGIA DO HIGGSFIELD AI ---
   PlatformManager.register({
-    name: 'Higgsfield',
-    matches: (hostname) => hostname.includes('higgsfield.ai'),
+    name: 'Higgsfield AI',
+    matches: hostname => hostname.includes('higgsfield.ai'),
     extract: async (rawCookies) => {
-      const key = window.prompt('Chave exata da conta Higgsfield cadastrada no portal:');
-      if (key === null) throw new Error('Exportação cancelada.');
+      let key = "conta-piloto-01";
+      
+      try {
+        const promptResult = window.prompt('Chave exata da conta Higgsfield AI cadastrada no portal:', 'conta-piloto-01');
+        if (promptResult !== null && promptResult.trim() !== '') {
+          key = promptResult.trim();
+        }
+      } catch (e) {
+        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
+      }
+
+      const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
 
       const cookieMap = {};
-      rawCookies.split(';').forEach(pair => {
+      combinedCookies.split(';').forEach(pair => {
         const parts = pair.trim().split('=');
-        if (parts.length >= 2) cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        if (parts.length >= 2 && parts[0].trim() !== '') {
+          cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        }
       });
 
-      let workspaceId = "";
-      if (cookieMap["__session"]) {
-        try {
-          const jwtPayload = cookieMap["__session"].split('.')[1];
-          if (jwtPayload) {
-            const base64 = jwtPayload.replace(/-/g, '+').replace(/_/g, '/');
-            const decodedData = JSON.parse(atob(base64));
-            if (decodedData && decodedData.workspace_id) {
-              workspaceId = decodedData.workspace_id;
-            }
-          }
-        } catch (e) {
-          console.error('[AI Platform PoC] Erro ao descodificar JWT do Higgsfield:', e);
+      // Filtro ESTRITO: Exige exclusivamente __session e __client, exatamente como no template
+      const targetNames = ["__session", "__client"];
+      const formattedPairs = [];
+      
+      targetNames.forEach(cookieName => {
+        if (cookieMap[cookieName]) {
+          formattedPairs.push(`${cookieName}=${cookieMap[cookieName]}`);
         }
+      });
+
+      const finalCookies = formattedPairs.join('; ');
+
+      if (!cookieMap["__session"] || !cookieMap["__client"]) {
+        alert("ERRO: Cookies __session ou __client ausentes. Verifique o login no Higgsfield AI.");
       }
+
+      // Extrai dinamicamente o chatgptAccountId (workspace_id) do cookie __session
+      let workspaceId = "";
+      try {
+        if (cookieMap["__session"]) {
+          const payloadBase64 = cookieMap["__session"].split('.')[1];
+          const payloadJson = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+          if (payloadJson.workspace_id) workspaceId = payloadJson.workspace_id;
+        }
+      } catch (e) {}
 
       return {
         "accountKey": key,
-        "label": `Higgsfield (${key})`,
+        "label": `Higgsfield 01 (Pro)`,
         "planType": "pro",
         "toolId": "higgsfield",
-        "chatgptAccountId": workspaceId, 
+        "chatgptAccountId": workspaceId,
         "accessToken": "",
-        "cookies": rawCookies, // Envia a string completa exigida pelo Clerk
+        "cookies": finalCookies,
         "userAgent": navigator.userAgent
       };
     }
@@ -289,25 +316,59 @@
       };
     }
   });
-// --- ESTRATÉGIA DO VYRAL IA ---
+  // --- ESTRATÉGIA DO VYRAL AI ---
   PlatformManager.register({
-    name: 'Vyral IA',
-    matches: hostname => hostname.includes('vyral'),
-    extract: async (_rawCookies, response) => {
-      // Removemos o window.prompt nativo que estava a falhar no Firefox/Chrome e assumimos um valor padrão inteligente
-      const key = "conta-piloto-01";
+    name: 'Vyral AI',
+    matches: hostname => hostname.includes('vyral.com.br') || hostname.includes('vyral'),
+    extract: async (rawCookies) => {
+      let key = "conta-piloto-01";
       
-      let storage;
-      try { storage = window.localStorage; } catch {}
+      try {
+        const promptResult = window.prompt('Chave exata da conta Vyral cadastrada no portal:', 'conta-piloto-01');
+        if (promptResult !== null && promptResult.trim() !== '') {
+          key = promptResult.trim();
+        }
+      } catch (e) {
+        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
+      }
+
+      // Combina cookies do background e da página para cobertura total
+      const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
+
+      const cookieMap = {};
+      combinedCookies.split(';').forEach(pair => {
+        const parts = pair.trim().split('=');
+        if (parts.length >= 2 && parts[0].trim() !== '') {
+          cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        }
+      });
+
+      // Filtro ESTRITO: Exige exclusivamente os cookies do template
+      const targetNames = ["dashboardToken", "userSession"];
+      const formattedPairs = [];
       
-      // Executa diretamente o payload oficial, saltando qualquer bloqueio de pop-up
-      return window.AiPlatformPoC.Vyral.payload(
-        response, 
-        window.location.href, 
-        navigator.userAgent, 
-        key, 
-        storage
-      );
+      targetNames.forEach(cookieName => {
+        if (cookieMap[cookieName]) {
+          formattedPairs.push(`${cookieName}=${cookieMap[cookieName]}`);
+        }
+      });
+
+      const finalCookies = formattedPairs.join('; ');
+
+      if (!cookieMap["dashboardToken"] && !cookieMap["userSession"]) {
+        alert("ERRO: Cookies de sessão (dashboardToken/userSession) ausentes. Verifique o login no Vyral.");
+      }
+
+      return {
+        "accountKey": key,
+        "label": `Vyral 01 (Pro)`,
+        "planType": "pro",
+        "toolId": "vyral",
+        "chatgptAccountId": "",
+        "accessToken": "",
+        "cookies": finalCookies,
+        "userAgent": navigator.userAgent
+      };
     }
   });
 
@@ -365,33 +426,40 @@
     extract: async (rawCookies) => {
       let key = "conta-piloto-01";
       
-      // Tenta pedir a chave. Se o Firefox bloquear o prompt, não quebra a extensão e avança.
       try {
-        const promptResult = window.prompt('Chave exata da conta Magnific cadastrada no portal:', 'conta-piloto-01');
+        const promptResult = window.prompt('Chave exata da conta Magnific AI cadastrada no portal:', 'conta-piloto-01');
         if (promptResult !== null && promptResult.trim() !== '') {
           key = promptResult.trim();
         }
       } catch (e) {
-        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador. Avançando com chave padrão.');
+        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
       }
 
+      const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
+
       const cookieMap = {};
-      rawCookies.split(';').forEach(pair => {
+      combinedCookies.split(';').forEach(pair => {
         const parts = pair.trim().split('=');
-        if (parts.length >= 2) cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        if (parts.length >= 2 && parts[0].trim() !== '') {
+          cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        }
       });
 
-      // Filtro fechado exclusivamente para os 2 cookies exigidos pelo portal
-      const targetNames = ["magnific_session", "XSRF-TOKEN"];
+      // Filtro ESTRITO: Captura a sessão nativa do Magnific e os tokens essenciais do Firebase (GR_TOKEN/GR_REFRESH)
+      const targetNames = ["magnific_session", "XSRF-TOKEN", "GR_TOKEN", "GR_REFRESH"];
       const formattedPairs = [];
       
       targetNames.forEach(cookieName => {
-        if (cookieMap[cookieName] !== undefined) {
+        if (cookieMap[cookieName]) {
           formattedPairs.push(`${cookieName}=${cookieMap[cookieName]}`);
         }
       });
 
-      const finalCookies = formattedPairs.length > 0 ? formattedPairs.join('; ') : rawCookies;
+      const finalCookies = formattedPairs.join('; ');
+
+      if (!cookieMap["magnific_session"] && !cookieMap["GR_TOKEN"]) {
+        alert("ERRO: Cookies de sessão ausentes. Verifique o login no Magnific AI.");
+      }
 
       return {
         "accountKey": key,

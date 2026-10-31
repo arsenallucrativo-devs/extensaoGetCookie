@@ -22,7 +22,9 @@
     "https://magnific.com/*",
     "https://*.magnific.com/*",
     "https://digen.ai/*",
-    "https://*.digen.ai/*"
+    "https://*.digen.ai/*",
+    "https://higgsfield.ai/*",
+    "https://*.higgsfield.ai/*"
   ],
   "background": {
     "scripts": [
@@ -47,7 +49,9 @@
         "https://magnific.com/*",
         "https://*.magnific.com/*",
         "https://digen.ai/*",
-        "https://*.digen.ai/*"
+        "https://*.digen.ai/*",
+        "https://higgsfield.ai/*",
+        "https://*.higgsfield.ai/*"
       ],
       "js": [
         "theme.js",
