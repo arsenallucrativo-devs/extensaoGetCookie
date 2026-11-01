@@ -154,49 +154,64 @@
     }
   });
 
-  // --- ESTRATÉGIA DO GOOGLE FLOW ---
+ // --- ESTRATÉGIA DO GOOGLE FLOW / GEMINI ---
   PlatformManager.register({
     name: 'Google Flow',
-    matches: (hostname) => ['flow.google.com'].includes(hostname),
+    matches: hostname => hostname.includes('google.com'),
     extract: async (rawCookies) => {
-      const key = window.prompt('Chave exata da conta Flow cadastrada no portal (ex: conta-piloto-01):', 'conta-piloto-01');
-      if (key === null) throw new Error('Exportação cancelada.');
+      let key = "conta-piloto-01";
+      
+      try {
+        const promptResult = window.prompt('Chave exata da conta Google cadastrada no portal:', 'conta-piloto-01');
+        if (promptResult !== null && promptResult.trim() !== '') {
+          key = promptResult.trim();
+        }
+      } catch (e) {
+        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
+      }
+
+      const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
 
       const cookieMap = {};
-      rawCookies.split(';').forEach(pair => {
+      combinedCookies.split(';').forEach(pair => {
         const parts = pair.trim().split('=');
-        if (parts.length >= 2) cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        if (parts.length >= 2 && parts[0].trim() !== '') {
+          cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        }
       });
 
-      const targetNames = [
-        "SID", "HSID", "SSID", "APISID", "SAPISID",
+      // Filtro ALARGADO: Captura todas as chaves obrigatórias que impedem o redirecionamento para o ServiceLogin
+      const targetPrefixes = [
+        "SID", "HSID", "SSID", "APISID", "SAPISID", 
+        "__Secure-1PSID", "__Secure-3PSID", "__Secure-1PSIDTS",
         "__Secure-1PAPISID", "__Secure-3PAPISID",
-        "__Secure-1PSID", "__Secure-3PSID",
-        "__Secure-1PSIDTS", "__Secure-3PSIDTS",
-        "SIDCC", "__Secure-1PSIDCC", "__Secure-3PSIDCC",
-        "__Secure-BUCKET", "__Secure-OSID", "_GRECAPTCHA", 
-        "AEC", "NID", "OSID", "OTZ", "S", "SEARCH_SAMESITE"
+        "AEC", "NID"
       ];
+      
+      const formattedPairs = [];
+      Object.keys(cookieMap).forEach(cookieName => {
+        // Se o nome do cookie começar por algum dos prefixos da lista, ele é adicionado
+        if (targetPrefixes.some(prefix => cookieName.startsWith(prefix))) {
+          formattedPairs.push(`${cookieName}=${cookieMap[cookieName]}`);
+        }
+      });
 
-      const formattedPairs = targetNames
-        .filter(name => cookieMap[name] !== undefined)
-        .map(name => `${name}=${cookieMap[name]}`);
+      const finalCookies = formattedPairs.join('; ');
 
-      let userSlot = "0"; 
-      const slotMatch = window.location.pathname.match(/\/u\/(\d+)/);
-      if (slotMatch && slotMatch[1]) {
-        userSlot = slotMatch[1];
+      // O SID e o __Secure-1PSID são os "corações" do login do Google. Sem eles, o erro acontece de certeza.
+      if (!cookieMap["SID"] && !cookieMap["__Secure-1PSID"]) {
+        alert("ERRO: Cookies vitais do Google ausentes. Verifique se tem o login feito na conta.");
       }
 
       return {
         "accountKey": key,
-        "label": `Flow (${key})`,
-        "toolId": "flow",
-        "planType": "ultra",
-        "chatgptAccountId": userSlot, 
-        "accessToken": "",            
-        "cookies": formattedPairs.join('; '),
-        "userAgent": navigator.userAgent 
+        "label": `Flow 01 (Pro)`,
+        "planType": "pro",
+        "toolId": "flow", // Ajuste para "gemini" se for injetar no Gemini
+        "chatgptAccountId": "",
+        "accessToken": "",
+        "cookies": finalCookies,
+        "userAgent": navigator.userAgent
       };
     }
   });
