@@ -186,8 +186,10 @@
     extract: async (rawCookies) => {
       const isGemini = window.location.hostname.includes('gemini');
       const toolId = isGemini ? "gemini" : "flow";
-      const label = isGemini ? "Gemini 01 (Advanced)" : "Flow 01 (Pro)";
-      const plan = isGemini ? "advanced" : "pro";
+      
+      // Ajuste para replicar a nomenclatura e o plano exatos
+      const label = isGemini ? "Gemini 01 (Advanced)" : "Flow 01 (Ultra)";
+      const plan = isGemini ? "advanced" : "ultra";
 
       let key = "conta-piloto-01";
       try {
@@ -207,10 +209,12 @@
         }
       });
 
+      // Filtro Expandido: Inclui agora OSID, __Secure-OSID e SEARCH_SAMESITE
       const exactTargets = [
         "AEC", "NID", "SID", "HSID", "SSID", "APISID", "SAPISID",
         "__Secure-1PSID", "__Secure-3PSID", "__Secure-1PAPISID", "__Secure-3PAPISID",
-        "SIDCC", "__Secure-1PSIDCC", "__Secure-3PSIDCC", "__Secure-1PSIDTS", "__Secure-3PSIDTS"
+        "SIDCC", "__Secure-1PSIDCC", "__Secure-3PSIDCC", "__Secure-1PSIDTS", "__Secure-3PSIDTS",
+        "OSID", "__Secure-OSID", "SEARCH_SAMESITE"
       ];
 
       const formattedPairs = [];
@@ -224,15 +228,19 @@
         alert(`ERRO: Cookies vitais do Google (SID / __Secure-1PSID) ausentes. Verifique o login no ${isGemini ? 'Gemini' : 'Flow'}.`);
       }
 
+      // Calcula uma data de expiração válida (30 dias para o futuro em milissegundos)
+      const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
+
       return {
         "accountKey": key,
         "label": label,
         "planType": plan,
         "toolId": toolId,
-        "chatgptAccountId": "",
+        "chatgptAccountId": "0", // Forçado a "0" conforme exigido pelo backend
         "accessToken": "",
         "cookies": formattedPairs.join('; '),
-        "userAgent": navigator.userAgent
+        "userAgent": navigator.userAgent,
+        "expiresAt": expiresAt
       };
     }
   });
