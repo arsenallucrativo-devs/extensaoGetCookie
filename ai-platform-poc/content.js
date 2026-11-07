@@ -89,7 +89,7 @@
       };
     }
   });
-// --- ESTRATÉGIA DO HIGGSFIELD AI (BLINDADA) ---
+// --- ESTRATÉGIA DO HIGGSFIELD AI (Blindada + Cloudflare + Expiração) ---
   PlatformManager.register({
     name: 'Higgsfield AI',
     matches: hostname => hostname.includes('higgsfield.ai'),
@@ -97,14 +97,9 @@
       let key = "conta-piloto-01";
       try {
         const promptResult = window.prompt('Chave exata da conta Higgsfield AI cadastrada no portal:', 'conta-piloto-01');
-        if (promptResult !== null && promptResult.trim() !== '') {
-          key = promptResult.trim();
-        }
-      } catch (e) {
-        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
-      }
+        if (promptResult !== null && promptResult.trim() !== '') key = promptResult.trim();
+      } catch (e) {}
 
-      // Combina os cookies do background com os visíveis no documento
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
       const cookieMap = {};
       
@@ -113,33 +108,45 @@
         if (parts.length >= 2 && parts[0].trim() !== '') {
           const k = parts[0].trim();
           const v = parts.slice(1).join('=').trim();
-          if (!cookieMap[k] || v.length > cookieMap[k].length) {
-            cookieMap[k] = v;
-          }
+          if (!cookieMap[k] || v.length > cookieMap[k].length) cookieMap[k] = v;
         }
       });
 
-      // GARANTIA: Se o __client não veio do background, tenta procurá-lo no documento ou localStorage/sessionStorage do Clerk
+      // Ponte Clerk: tenta recuperar o __client via múltiplas fontes
       if (!cookieMap["__client"]) {
         try {
-          // Procura por vestígios do client do Clerk guardados no storage local da app
-          for (let i = 0; i < localStorage.length; i++) {
-            const val = localStorage.getItem(localStorage.key(i));
-            if (val && val.includes("client_")) {
-              // Extrai o token se estiver exposto em alguma chave de sessão do Clerk
-              const match = val.match(/(client_[a-zA-Z0-9_-]+)/);
-              if (match) {
-                console.log("[AI Platform PoC] __client recuperado via Storage local.");
+          // Fonte 1: objeto global do Clerk exposto na página
+          if (window.__clerk_client && window.__clerk_client.id) {
+            cookieMap["__client"] = window.__clerk_client.id;
+          }
+          // Fonte 2: JWT completo via window.Clerk
+          if (!cookieMap["__client"] && window.Clerk && window.Clerk.client && window.Clerk.client.id) {
+            cookieMap["__client"] = window.Clerk.client.id;
+          }
+          // Fonte 3: varredura do localStorage por tokens Clerk
+          if (!cookieMap["__client"]) {
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              const val = localStorage.getItem(k);
+              if (val && (val.includes("client_") || k.includes("clerk"))) {
+                // Tenta capturar o JWT completo do __client (começa com eyJ)
+                const jwtMatch = val.match(/(eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)/);
+                const idMatch = val.match(/(client_[a-zA-Z0-9_-]{20,})/);
+                if (jwtMatch) { cookieMap["__client"] = jwtMatch[1]; break; }
+                if (idMatch) { cookieMap["__client"] = idMatch[1]; break; }
               }
             }
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn("[AI Platform PoC] Falha na Ponte Clerk:", e.message);
+        }
       }
 
-      // Filtro completo: exige que o __client e o __session estejam presentes na string final
+      // Prefixos de segurança: cobre Clerk, Cloudflare, HF e cookies de rastreio
       const targetPrefixes = [
-        "__client", "__session", "clerk", "hf-", "hf_", 
-        "cf_clearance", "__cf_bm", "datadome", "__refresh", "$$__device-id"
+        "__client", "__session", "__clerk", "clerk", "hf-", "hf_",
+        "cf_clearance", "__cf_bm", "datadome", "__refresh", "$$__device-id",
+        "g_state", "fp_ref"
       ];
       
       const formattedPairs = [];
@@ -149,14 +156,10 @@
         }
       });
 
-      const finalCookies = formattedPairs.join('; ');
-
-      // Alerta crítico caso o __client continue ausente para evitar que envie dados quebrados
       if (!cookieMap["__client"]) {
-        console.warn("[AI Platform PoC] ATENÇÃO: O cookie __client do Clerk não foi detetado pela API de cookies. Certifique-se de que está na página principal logada.");
+        console.warn("[AI Platform PoC] ATENÇÃO: O cookie __client do Clerk não foi detetado.");
       }
 
-      // Extração dinâmica do workspace_id
       let workspaceId = "";
       try {
         const sessionKey = Object.keys(cookieMap).find(k => k.startsWith("__session"));
@@ -174,7 +177,7 @@
         "toolId": "higgsfield",
         "chatgptAccountId": workspaceId,
         "accessToken": "",
-        "cookies": finalCookies,
+        "cookies": formattedPairs.join('; '),
         "userAgent": navigator.userAgent
       };
     }
@@ -488,17 +491,40 @@
         }
       });
 
-      // Filtro ESTRITO: Captura a sessão nativa do Magnific e os tokens essenciais do Firebase (GR_TOKEN/GR_REFRESH)
-      const targetNames = ["magnific_session", "XSRF-TOKEN", "GR_TOKEN", "GR_REFRESH"];
-      const formattedPairs = [];
-      
-      targetNames.forEach(cookieName => {
-        if (cookieMap[cookieName]) {
-          formattedPairs.push(`${cookieName}=${cookieMap[cookieName]}`);
+      // Extrai UID do JWT do GR_TOKEN caso o cookie UID não esteja presente no browser
+      // (o campo accounts_user_id dentro do payload é o mesmo valor)
+      if (!cookieMap["UID"] && cookieMap["GR_TOKEN"]) {
+        try {
+          const jwtParts = cookieMap["GR_TOKEN"].split('.');
+          const payload = JSON.parse(atob(jwtParts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          if (payload.accounts_user_id) cookieMap["UID"] = String(payload.accounts_user_id);
+        } catch (e) {
+          console.warn('[AI Platform PoC] Falha ao extrair UID do GR_TOKEN:', e.message);
+        }
+      }
+
+      // Ordem fixa que espelha o template esperado pelo backend
+      const orderedKeys = [
+        "magnific_session", "_fcid", "_fc", "ak_bmsc", "pkce_verifier",
+        "g_state", "GR_TOKEN", "GR_REFRESH", "GR_REMEMBER", "GR_REFRESH_WRAPPED",
+        "FP_MBL_NEW", "UID", "AI_MBL", "sb-prefs", "XSRF-TOKEN"
+      ];
+      // Prefixos dinâmicos adicionados no final (ph_phc_*, __cf_bm, cf_clearance)
+      const dynamicPrefixes = ["ph_phc_", "__cf_bm", "cf_clearance"];
+
+      const finalPairs = [];
+      // 1) Cookies na ordem definida
+      orderedKeys.forEach(name => {
+        if (cookieMap[name]) finalPairs.push(`${name}=${cookieMap[name]}`);
+      });
+      // 2) Cookies de prefixo dinâmico (PostHog, Cloudflare, etc.)
+      Object.keys(cookieMap).forEach(name => {
+        if (dynamicPrefixes.some(p => name.startsWith(p))) {
+          finalPairs.push(`${name}=${cookieMap[name]}`);
         }
       });
 
-      const finalCookies = formattedPairs.join('; ');
+      const finalCookies = finalPairs.join('; ');
 
       if (!cookieMap["magnific_session"] && !cookieMap["GR_TOKEN"]) {
         alert("ERRO: Cookies de sessão ausentes. Verifique o login no Magnific AI.");
@@ -509,6 +535,57 @@
         "label": `Magnific 01 (Pro)`,
         "planType": "pro",
         "toolId": "magnific",
+        "chatgptAccountId": "",
+        "accessToken": "",
+        "cookies": finalCookies,
+        "userAgent": navigator.userAgent
+      };
+    }
+  });
+
+// --- ESTRATÉGIA DO SUNO ---
+  PlatformManager.register({
+    name: 'Suno',
+    matches: hostname => hostname.includes('suno.com') || hostname.includes('suno.ai'),
+    extract: async (rawCookies) => {
+      let key = "conta-piloto-01";
+
+      try {
+        const promptResult = window.prompt('Chave exata da conta Suno cadastrada no portal:', 'conta-piloto-01');
+        if (promptResult !== null && promptResult.trim() !== '') key = promptResult.trim();
+      } catch (e) {
+        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
+      }
+
+      const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
+      const cookieMap = {};
+      combinedCookies.split(';').forEach(pair => {
+        const parts = pair.trim().split('=');
+        if (parts.length >= 2 && parts[0].trim() !== '') {
+          cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        }
+      });
+
+      // Suno usa Clerk para autenticação
+      // __session  → token de sessão principal do Clerk
+      // __client_uat → timestamp de atualização do client (necessário para validar sessão)
+      const targetNames = ["__session", "__client_uat"];
+      const finalPairs = [];
+      targetNames.forEach(name => {
+        if (cookieMap[name]) finalPairs.push(`${name}=${cookieMap[name]}`);
+      });
+
+      const finalCookies = finalPairs.join('; ');
+
+      if (!cookieMap["__session"]) {
+        alert("ERRO: Cookie __session do Clerk ausente. Verifique se está logado no Suno.");
+      }
+
+      return {
+        "accountKey": key,
+        "label": "Suno 01 (Pro)",
+        "planType": "pro",
+        "toolId": "suno",
         "chatgptAccountId": "",
         "accessToken": "",
         "cookies": finalCookies,
