@@ -355,10 +355,10 @@
         const rawCookies = response?.cookies || "";
         
         let sessionData;
-        // Se houver estratégia dedicada e o usuário não trocou o slug, usa a dedicada se preferir
-        if (existingStrategy && toolIdInput === detected.toolId) {
+        // Se houver estratégia dedicada e o usuário mantiver o slug da plataforma, usa a dedicada passando explicitKey
+        if (existingStrategy && toolIdInput.toLowerCase().trim() === detected.toolId.toLowerCase().trim()) {
           try {
-            sessionData = await existingStrategy.extract(rawCookies, response);
+            sessionData = await existingStrategy.extract(rawCookies, response, keyInput.trim());
           } catch (e) {
             console.warn('[AI Platform PoC] Estratégia dedicada falhou, usando extrator universal:', e);
             sessionData = executeUniversalExtraction({

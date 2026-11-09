@@ -8,6 +8,22 @@
     getStrategy(hostname) { return this.strategies.find(s => s.matches(hostname)); }
   };
 
+  const resolveAccountKey = (explicitKey, promptMsg, defaultKey = 'conta-piloto-01') => {
+    if (explicitKey && typeof explicitKey === 'string' && explicitKey.trim()) {
+      return explicitKey.trim();
+    }
+    try {
+      if (typeof window !== 'undefined' && typeof window.prompt === 'function') {
+        const res = window.prompt(promptMsg, defaultKey);
+        if (res === null) throw new Error('Exportação cancelada.');
+        return (res && res.trim()) ? res.trim() : defaultKey;
+      }
+    } catch (e) {
+      if (e.message === 'Exportação cancelada.') throw e;
+    }
+    return defaultKey;
+  };
+
   // ==============================================================================
   // 2. MÓDULOS ISOLADOS DAS PLATAFORMAS (Desacoplamento)
   // ==============================================================================
@@ -15,9 +31,8 @@
   PlatformManager.register({
     name: 'Google Gemini',
     matches: hostname => hostname === 'gemini.google.com',
-    extract: async (_rawCookies, response) => {
-      const key = window.prompt('Chave exata da conta Gemini cadastrada no portal:');
-      if (key === null) throw new Error('Exportação cancelada.');
+    extract: async (_rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta Gemini cadastrada no portal:', 'conta-piloto-01');
       return window.AiPlatformPoC.Gemini.payload(response, window.location.href, navigator.userAgent, key);
     }
   });
@@ -25,9 +40,8 @@
   PlatformManager.register({
     name: 'Vyral IA',
     matches: hostname => hostname === 'app.vyral.com.br',
-    extract: async (_rawCookies, response) => {
-      const key = window.prompt('Chave exata da conta Vyral cadastrada no portal:', 'conta-piloto-01');
-      if (key === null) throw new Error('Exportação cancelada.'); // <--- Linha 30 exata!
+    extract: async (_rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta Vyral cadastrada no portal:', 'conta-piloto-01');
       let storage;
       try { storage = window.localStorage; } catch {}
       return window.AiPlatformPoC.Vyral.payload(response, window.location.href, navigator.userAgent, key, storage);
@@ -38,17 +52,8 @@
   PlatformManager.register({
     name: 'Leonardo AI',
     matches: hostname => hostname.includes('leonardo.ai'),
-    extract: async (rawCookies) => {
-      let key = "conta-piloto-01";
-      
-      try {
-        const promptResult = window.prompt('Chave exata da conta Leonardo AI cadastrada no portal:', 'conta-piloto-01');
-        if (promptResult !== null && promptResult.trim() !== '') {
-          key = promptResult.trim();
-        }
-      } catch (e) {
-        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
-      }
+    extract: async (rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta Leonardo AI cadastrada no portal:', 'conta-piloto-01');
 
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
 
@@ -93,12 +98,8 @@
   PlatformManager.register({
     name: 'Higgsfield AI',
     matches: hostname => hostname.includes('higgsfield.ai'),
-    extract: async (rawCookies) => {
-      let key = "conta-piloto-01";
-      try {
-        const promptResult = window.prompt('Chave exata da conta Higgsfield AI cadastrada no portal:', 'conta-piloto-01');
-        if (promptResult !== null && promptResult.trim() !== '') key = promptResult.trim();
-      } catch (e) {}
+    extract: async (rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta Higgsfield AI cadastrada no portal:', 'conta-piloto-01');
 
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
       const cookieMap = {};
@@ -186,7 +187,7 @@
   PlatformManager.register({
     name: 'Google Ecosystem',
     matches: hostname => hostname.includes('google.com'),
-    extract: async (rawCookies) => {
+    extract: async (rawCookies, response, explicitKey) => {
       const isGemini = window.location.hostname.includes('gemini');
       const toolId = isGemini ? "gemini" : "flow";
       
@@ -194,13 +195,7 @@
       const label = isGemini ? "Gemini 01 (Advanced)" : "Flow 01 (Ultra)";
       const plan = isGemini ? "advanced" : "ultra";
 
-      let key = "conta-piloto-01";
-      try {
-        const promptResult = window.prompt(`Chave exata da conta ${isGemini ? 'Gemini' : 'Flow'} cadastrada no portal:`, 'conta-piloto-01');
-        if (promptResult !== null && promptResult.trim() !== '') key = promptResult.trim();
-      } catch (e) {
-        console.warn('[AI Platform PoC] Prompt suprimido.');
-      }
+      const key = resolveAccountKey(explicitKey, `Chave exata da conta ${isGemini ? 'Gemini' : 'Flow'} cadastrada no portal:`, 'conta-piloto-01');
 
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
       const cookieMap = {};
@@ -253,9 +248,8 @@
   PlatformManager.register({
     name: 'Grok',
     matches: (hostname) => ['grok.com', 'x.com'].includes(hostname),
-    extract: async (rawCookies) => {
-      const key = window.prompt('Chave exata da conta Grok cadastrada no portal:', 'conta-piloto-01');
-      if (key === null) throw new Error('Exportação cancelada.');
+    extract: async (rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta Grok cadastrada no portal:', 'conta-piloto-01');
 
       const cookieMap = {};
       rawCookies.split(';').forEach(pair => {
@@ -289,9 +283,8 @@
   PlatformManager.register({
     name: 'ChatGPT',
     matches: (hostname) => ['chatgpt.com', 'chat.openai.com'].includes(hostname),
-    extract: async (rawCookies) => {
-      const key = window.prompt('Chave exata da conta ChatGPT cadastrada no portal:', 'conta-piloto-01');
-      if (key === null) throw new Error('Exportação cancelada.');
+    extract: async (rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta ChatGPT cadastrada no portal:', 'conta-piloto-01');
 
       const cookieMap = {};
       rawCookies.split(';').forEach(pair => {
@@ -368,17 +361,8 @@
   PlatformManager.register({
     name: 'Vyral AI',
     matches: hostname => hostname.includes('vyral.com.br') || hostname.includes('vyral'),
-    extract: async (rawCookies) => {
-      let key = "conta-piloto-01";
-      
-      try {
-        const promptResult = window.prompt('Chave exata da conta Vyral cadastrada no portal:', 'conta-piloto-01');
-        if (promptResult !== null && promptResult.trim() !== '') {
-          key = promptResult.trim();
-        }
-      } catch (e) {
-        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
-      }
+    extract: async (rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta Vyral cadastrada no portal:', 'conta-piloto-01');
 
       // Combina cookies do background e da página para cobertura total
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
@@ -424,16 +408,8 @@
   PlatformManager.register({
     name: 'Pollo AI',
     matches: hostname => hostname.includes('pollo.ai'),
-    extract: async (rawCookies) => {
-      // Abre a tela de prompt para pedir a chave manualmente
-      const promptResult = window.prompt('Chave exata da conta Pollo AI cadastrada no portal:', 'conta-piloto-01');
-      
-      // Se o utilizador fechar a janela ou clicar em Cancelar, aborta limpidamente
-      if (promptResult === null) {
-        throw new Error('Exportação cancelada pelo utilizador.');
-      }
-      
-      const key = promptResult.trim() || 'conta-piloto-01';
+    extract: async (rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta Pollo AI cadastrada no portal:', 'conta-piloto-01');
 
       const cookieMap = {};
       rawCookies.split(';').forEach(pair => {
@@ -471,17 +447,8 @@
   PlatformManager.register({
     name: 'Magnific AI',
     matches: hostname => hostname.includes('magnific.com'),
-    extract: async (rawCookies) => {
-      let key = "conta-piloto-01";
-      
-      try {
-        const promptResult = window.prompt('Chave exata da conta Magnific AI cadastrada no portal:', 'conta-piloto-01');
-        if (promptResult !== null && promptResult.trim() !== '') {
-          key = promptResult.trim();
-        }
-      } catch (e) {
-        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
-      }
+    extract: async (rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta Magnific AI cadastrada no portal:', 'conta-piloto-01');
 
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
 
@@ -549,15 +516,8 @@
   PlatformManager.register({
     name: 'Suno',
     matches: hostname => hostname.includes('suno.com') || hostname.includes('suno.ai'),
-    extract: async (rawCookies) => {
-      let key = "conta-piloto-01";
-
-      try {
-        const promptResult = window.prompt('Chave exata da conta Suno cadastrada no portal:', 'conta-piloto-01');
-        if (promptResult !== null && promptResult.trim() !== '') key = promptResult.trim();
-      } catch (e) {
-        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
-      }
+    extract: async (rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta Suno cadastrada no portal:', 'conta-piloto-01');
 
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
       const cookieMap = {};
@@ -600,17 +560,8 @@
   PlatformManager.register({
     name: 'GeraViral',
     matches: hostname => hostname.includes('geraviral'),
-    extract: async (rawCookies) => {
-      let key = "conta-piloto-01";
-
-      try {
-        const promptResult = window.prompt('Chave exata da conta GeraViral cadastrada no portal:', 'conta-piloto-01');
-        if (promptResult !== null && promptResult.trim() !== '') {
-          key = promptResult.trim();
-        }
-      } catch (e) {
-        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
-      }
+    extract: async (rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta GeraViral cadastrada no portal:', 'conta-piloto-01');
 
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
 
@@ -658,17 +609,8 @@
   PlatformManager.register({
     name: 'Digen AI',
     matches: hostname => hostname.includes('digen'),
-    extract: async (rawCookies) => {
-      let key = "conta-piloto-01";
-      
-      try {
-        const promptResult = window.prompt('Chave exata da conta Digen AI cadastrada no portal:', 'conta-piloto-01');
-        if (promptResult !== null && promptResult.trim() !== '') {
-          key = promptResult.trim();
-        }
-      } catch (e) {
-        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
-      }
+    extract: async (rawCookies, response, explicitKey) => {
+      const key = resolveAccountKey(explicitKey, 'Chave exata da conta Digen AI cadastrada no portal:', 'conta-piloto-01');
 
       // SOLUÇÃO: Combina os cookies do background com os cookies do frontend
       const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
@@ -742,6 +684,11 @@
       console.warn('[AI Platform PoC] Erro ao inicializar widget universal:', e);
     }
   }
+
+  // No navegador real (onde document.createElement existe), NÃO executamos nada automaticamente no page load.
+  // Apenas o botão flutuante fica visível para o usuário clicar quando desejar capturar.
+  const isTestEnv = typeof document.createElement === 'undefined';
+  if (!isTestEnv) return;
 
   const hostname = window.location.hostname.replace('www.', '');
   const platform = PlatformManager.getStrategy(hostname);
