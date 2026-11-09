@@ -227,8 +227,10 @@
         }
       });
 
-      if (!cookieMap["SID"] || !cookieMap["__Secure-1PSID"]) {
-        alert(`ERRO: Cookies vitais do Google (SID / __Secure-1PSID) ausentes. Verifique o login no ${isGemini ? 'Gemini' : 'Flow'}.`);
+      if (!cookieMap["SID"] && !cookieMap["__Secure-1PSID"]) {
+        if (typeof alert === 'function') {
+          alert(`ERRO: Cookies vitais do Google (SID / __Secure-1PSID) ausentes. Verifique o login no ${isGemini ? 'Gemini' : 'Flow'}.`);
+        }
       }
 
       // Calcula uma data de expiração válida (30 dias para o futuro em milissegundos)
@@ -716,11 +718,6 @@
   const api = window.AiPlatformPoC;
   if (!api || !api.showModal) return;
 
-  const hostname = window.location.hostname.replace('www.', '');
-  const platform = PlatformManager.getStrategy(hostname);
-  
-  if (!platform) return; 
-
   const getCookies = () => new Promise((resolve, reject) => {
     chrome.runtime.sendMessage({ action: "GET_SESSION_COOKIES" }, (response) => {
       if (chrome.runtime.lastError || response?.error) {
@@ -730,6 +727,26 @@
       resolve(response || {});
     });
   });
+
+  // Inicializa o Widget Universal Flutuante para captura sob demanda em qualquer site
+  if (api && typeof api.initUniversalWidget === 'function') {
+    try {
+      api.initUniversalWidget({
+        getCookies,
+        showModal: api.showModal,
+        buildPayload: api.buildPayload,
+        stringifyPayload: api.stringifyPayload,
+        platformManager: PlatformManager
+      });
+    } catch (e) {
+      console.warn('[AI Platform PoC] Erro ao inicializar widget universal:', e);
+    }
+  }
+
+  const hostname = window.location.hostname.replace('www.', '');
+  const platform = PlatformManager.getStrategy(hostname);
+  
+  if (!platform) return;
 
   try {
     console.log('[AI Platform PoC] Plataforma detetada:', platform.name);

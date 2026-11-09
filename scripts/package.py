@@ -7,11 +7,14 @@ from zipfile import ZipFile, ZIP_DEFLATED
 root = Path(__file__).resolve().parents[1]
 output = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "dist"
 output.mkdir(parents=True, exist_ok=True)
+manifest_base = json.loads((root / "ai-platform-poc/manifest.json").read_text(encoding="utf-8"))
+version = manifest_base.get("version", "1.4.0")
+
 for browser in ("firefox", "chrome"):
-    manifest = json.loads((root / "ai-platform-poc/manifest.json").read_text())
+    manifest = json.loads((root / "ai-platform-poc/manifest.json").read_text(encoding="utf-8"))
     if browser == "chrome":
         manifest["background"] = {"service_worker": "service-worker.js"}
-    with ZipFile(output / f"extensaoGetCookie-v1.3.0-{browser}.zip", "w", ZIP_DEFLATED) as archive:
+    with ZipFile(output / f"extensaoGetCookie-v{version}-{browser}.zip", "w", ZIP_DEFLATED) as archive:
         for source in sorted((root / "ai-platform-poc").glob("*.js")):
             archive.write(source, source.name)
         archive.writestr("manifest.json", json.dumps(manifest, indent=2))

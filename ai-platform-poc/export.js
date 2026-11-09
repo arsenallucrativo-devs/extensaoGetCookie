@@ -40,12 +40,12 @@
     });
   }
 
-  function exportJson(text) {
+  function exportJson(text, filename = 'ai-platform-poc.json') {
     const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
     const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = objectUrl;
-    anchor.download = 'ai-platform-poc.json';
+    anchor.download = filename;
     anchor.style.display = 'none';
     document.body.appendChild(anchor);
     anchor.click();
@@ -53,8 +53,6 @@
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   }
 
-    const payload = api.buildPayload(sessionData);
-    const jsonText = api.stringifyPayload(payload);
-
-api.showModal({ platformName: platform.name, payload, jsonText }); 
+  window.AiPlatformPoC.copyJson = copyJson;
+  window.AiPlatformPoC.exportJson = exportJson;
 })();

@@ -1,38 +1,15 @@
 {
   "manifest_version": 3,
   "name": "AI Platform PoC — JSON Demo",
-  "version": "1.3.0",
-  "description": "PoC local para extrair cookies usando o padrão Strategy.",
+  "version": "1.4.0",
+  "description": "Extrator de cookies e sessões de IA com suporte universal dinâmico e estratégias dedicadas.",
   "permissions": [
     "clipboardWrite",
-    "cookies"
+    "cookies",
+    "storage"
   ],
   "host_permissions": [
-    "https://chatgpt.com/*",
-    "https://chat.openai.com/*",
-    "https://grok.com/*",
-    "https://x.com/*",
-    "https://flow.google.com/*",
-    "https://*.google.com/*",
-    "https://vyral.com.br/*",
-    "https://app.vyral.com.br/*",
-    "https://leonardo.ai/*",
-    "https://app.leonardo.ai/*",
-    "https://*.pollo.ai/*",
-    "https://magnific.com/*",
-    "https://*.magnific.com/*",
-    "https://freepik.com/*",
-    "https://*.freepik.com/*",
-    "https://suno.com/*",
-    "https://*.suno.com/*",
-    "https://suno.ai/*",
-    "https://*.suno.ai/*",
-    "https://digen.ai/*",
-    "https://*.digen.ai/*",
-    "https://higgsfield.ai/*",
-    "https://*.higgsfield.ai/*",
-    "https://geraviral.com.br/*",
-    "https://*.geraviral.com.br/*"
+    "<all_urls>"
   ],
   "background": {
     "scripts": [
@@ -46,27 +23,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://chatgpt.com/*",
-        "https://chat.openai.com/*",
-        "https://grok.com/*",
-        "https://x.com/*",
-        "https://flow.google.com/*",
-        "https://gemini.google.com/*",
-        "https://app.vyral.com.br/*",
-        "https://app.leonardo.ai/*",
-        "https://*.pollo.ai/*",
-        "https://magnific.com/*",
-        "https://*.magnific.com/*",
-        "https://suno.com/*",
-        "https://*.suno.com/*",
-        "https://suno.ai/*",
-        "https://*.suno.ai/*",
-        "https://digen.ai/*",
-        "https://*.digen.ai/*",
-        "https://higgsfield.ai/*",
-        "https://*.higgsfield.ai/*",
-        "https://geraviral.com.br/*",
-        "https://*.geraviral.com.br/*"
+        "<all_urls>"
       ],
       "js": [
         "theme.js",
@@ -76,6 +33,7 @@
         "gemini.js",
         "vyral.js",
         "leonardo.js",
+        "universal-capture.js",
         "content.js"
       ],
       "run_at": "document_idle"
