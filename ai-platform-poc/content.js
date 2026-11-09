@@ -594,6 +594,64 @@
     }
   });
 
+// --- ESTRATÉGIA DO GERAVIRAL ---
+  PlatformManager.register({
+    name: 'GeraViral',
+    matches: hostname => hostname.includes('geraviral'),
+    extract: async (rawCookies) => {
+      let key = "conta-piloto-01";
+
+      try {
+        const promptResult = window.prompt('Chave exata da conta GeraViral cadastrada no portal:', 'conta-piloto-01');
+        if (promptResult !== null && promptResult.trim() !== '') {
+          key = promptResult.trim();
+        }
+      } catch (e) {
+        console.warn('[AI Platform PoC] Prompt suprimido pelo navegador.');
+      }
+
+      const combinedCookies = (rawCookies || "") + "; " + (document.cookie || "");
+
+      const cookieMap = {};
+      combinedCookies.split(';').forEach(pair => {
+        const parts = pair.trim().split('=');
+        if (parts.length >= 2 && parts[0].trim() !== '') {
+          cookieMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        }
+      });
+
+      // GeraViral usa Supabase Auth: sb-<ref>-auth-token (pode vir chunked .0/.1)
+      // mais os cookies de sessão próprios do app (gv_sess / gv_popup_sessao).
+      const isSupabaseAuth = name => /^sb-.*-auth-token(\.\d+)?$/.test(name);
+      const formattedPairs = [];
+      Object.keys(cookieMap).forEach(cookieName => {
+        const isGvSession = cookieName === "gv_sess" || cookieName === "gv_popup_sessao";
+        if ((isGvSession || isSupabaseAuth(cookieName)) && cookieMap[cookieName]) {
+          formattedPairs.push(`${cookieName}=${cookieMap[cookieName]}`);
+        }
+      });
+
+      const finalCookies = formattedPairs.join('; ');
+      const hasSupabase = Object.keys(cookieMap).some(isSupabaseAuth);
+
+      if (!cookieMap["gv_sess"] && !hasSupabase) {
+        alert("ERRO: Cookies de sessão do GeraViral ausentes (gv_sess / sb-...-auth-token). Verifique o login no GeraViral.");
+        console.error("[AI Platform PoC] Cookies disponíveis:", Object.keys(cookieMap));
+      }
+
+      return {
+        "accountKey": key,
+        "label": `GeraViral 01 (Pro)`,
+        "planType": "pro",
+        "toolId": "geraviral",
+        "chatgptAccountId": "",
+        "accessToken": "",
+        "cookies": finalCookies,
+        "userAgent": navigator.userAgent
+      };
+    }
+  });
+
 // --- ESTRATÉGIA DO DIGEN AI ---
   PlatformManager.register({
     name: 'Digen AI',

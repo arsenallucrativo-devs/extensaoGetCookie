@@ -123,6 +123,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
       return true;
     } else if (hostname.includes('vyral')) { query = { url: sender.tab.url };
+    } else if (hostname.includes('geraviral')) { query = { domain: "geraviral.com.br" };
     } else { query = { url: sender.tab.url }; }
 
     if (sender.tab.cookieStoreId) query.storeId = sender.tab.cookieStoreId;

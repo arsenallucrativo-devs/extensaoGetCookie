@@ -30,7 +30,9 @@
     "https://digen.ai/*",
     "https://*.digen.ai/*",
     "https://higgsfield.ai/*",
-    "https://*.higgsfield.ai/*"
+    "https://*.higgsfield.ai/*",
+    "https://geraviral.com.br/*",
+    "https://*.geraviral.com.br/*"
   ],
   "background": {
     "scripts": [
@@ -62,7 +64,9 @@
         "https://digen.ai/*",
         "https://*.digen.ai/*",
         "https://higgsfield.ai/*",
-        "https://*.higgsfield.ai/*"
+        "https://*.higgsfield.ai/*",
+        "https://geraviral.com.br/*",
+        "https://*.geraviral.com.br/*"
       ],
       "js": [
         "theme.js",
