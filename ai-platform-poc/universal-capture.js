@@ -294,19 +294,15 @@
         style="width:100%;box-sizing:border-box;padding:8px 10px;background:#09090b;border:1px solid #3f3f46;border-radius:6px;color:#fff;font-size:13px;outline:none;" />
     `;
 
-    // Field 3: Plan Type
+    // Field 3: Plan Type (Exibição apenas informativa, sem seleção manual)
     const fieldPlan = document.createElement('div');
     fieldPlan.innerHTML = `
-      <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#e4e4e7;">
-        Plano da Ferramenta:
-      </label>
-      <select id="arsenal-select-plan" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#09090b;border:1px solid #3f3f46;border-radius:6px;color:#fff;font-size:13px;outline:none;">
-        <option value="pro" ${detected.plan === 'pro' ? 'selected' : ''}>Pro</option>
-        <option value="advanced" ${detected.plan === 'advanced' ? 'selected' : ''}>Advanced</option>
-        <option value="ultra" ${detected.plan === 'ultra' ? 'selected' : ''}>Ultra</option>
-        <option value="maestro" ${detected.plan === 'maestro' ? 'selected' : ''}>Maestro</option>
-        <option value="standard">Standard</option>
-      </select>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#09090b;border:1px solid #27272a;border-radius:6px;font-size:12px;box-sizing:border-box;">
+        <span style="color:#a1a1aa;font-weight:500;">Plano da conta:</span>
+        <span style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);padding:2px 10px;border-radius:9999px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">
+          ${(detected.plan || 'pro').toUpperCase()}
+        </span>
+      </div>
     `;
 
     // Status Alert Container
@@ -345,7 +341,7 @@
     captureBtn.onclick = async () => {
       const toolIdInput = document.getElementById('arsenal-input-toolid')?.value || detected.toolId;
       const keyInput = document.getElementById('arsenal-input-key')?.value || 'conta-piloto-01';
-      const planSelect = document.getElementById('arsenal-select-plan')?.value || 'pro';
+      const planValue = detected.plan || 'pro';
 
       captureBtn.disabled = true;
       captureBtn.innerText = '⏳ Extraindo cookies e tokens...';
@@ -364,7 +360,7 @@
             sessionData = executeUniversalExtraction({
               toolId: toolIdInput,
               accountKey: keyInput,
-              planType: planSelect,
+              planType: planValue,
               rawCookies
             });
           }
@@ -372,7 +368,7 @@
           sessionData = executeUniversalExtraction({
             toolId: toolIdInput,
             accountKey: keyInput,
-            planType: planSelect,
+            planType: planValue,
             rawCookies
           });
         }
