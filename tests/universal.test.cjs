@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const dir = path.join(__dirname, '../ai-platform-poc');
+const dir = path.join(__dirname, '../src');
 
 test('universal detector identifies known platforms and heuristics for new AIs', () => {
   const ctx = { globalThis: {}, console };
@@ -89,3 +89,23 @@ test('background supports universal fallback query on unknown AI domains', async
   assert.ok(queries.some(q => q.domain === 'klingai.com' || q.domain === '.klingai.com'));
   assert.match(response.cookies, /session_id=secret_sess/);
 });
+
+test('manifest and background are fully compatible with Chrome MV3 and Firefox MV3', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.manifest_version, 3);
+  assert.equal(manifest.background.service_worker, 'background.js');
+  assert.ok(Array.isArray(manifest.background.scripts));
+  assert.ok(manifest.browser_specific_settings?.gecko?.id);
+
+  const imported = [];
+  const fakeServiceWorkerCtx = {
+    URL,
+    globalThis: {},
+    importScripts: (...scripts) => { imported.push(...scripts); },
+    chrome: { runtime: { onMessage: { addListener: () => {} } } }
+  };
+
+  vm.runInNewContext(fs.readFileSync(path.join(dir, 'background.js'), 'utf8'), fakeServiceWorkerCtx);
+  assert.deepEqual(imported, ['gemini.js', 'vyral.js', 'leonardo.js']);
+});
+

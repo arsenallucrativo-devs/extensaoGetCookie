@@ -1,12 +1,23 @@
 # Extensão de sessões: ChatGPT, Grok, Flow, Gemini, Vyral e Leonardo.Ai
 
-## Download
+## Instalação e Uso
 
-- [Firefox — baixar ZIP](https://github.com/arsenallucrativo-devs/extensaoGetCookie/raw/refs/heads/main/downloads/extensaoGetCookie-v1.3.0-firefox.zip)
-- [Chrome — baixar ZIP](https://github.com/arsenallucrativo-devs/extensaoGetCookie/raw/refs/heads/main/downloads/extensaoGetCookie-v1.3.0-chrome.zip)
+### Google Chrome (ou navegadores Chromium como Edge e Brave)
+1. Abra `chrome://extensions` no navegador e ative o **Modo do desenvolvedor** (canto superior direito).
+2. Clique em **Carregar sem compactação** e selecione a pasta `src/`.
+3. Pronto! O botão flutuante **⚡ Capturar Sessão** estará ativo nas abas de IA.
 
-Se o repositório for privado, entre no GitHub com uma conta autorizada antes de baixar.
-Descompacte o ZIP; ele contém o manifest.json na raiz. No Firefox, selecione esse arquivo em about:debugging.
+### Mozilla Firefox
+1. Abra `about:debugging#/runtime/this-firefox`.
+2. Clique em **Carregar extensão temporária...** e selecione o arquivo `manifest.json` da pasta `src/` (ou do ZIP gerado para Firefox).
+3. Pronto!
+
+### Gerar Pacotes de Distribuição (ZIP)
+Para gerar pacotes compactados independentes para Chrome e Firefox:
+```bash
+python3 scripts/package.py
+```
+Os arquivos gerados serão salvos na pasta `dist/`.
 
 
 ## Leonardo.Ai
@@ -57,6 +68,7 @@ Validação de formato e validade temporal não comprova autenticação upstream
 
 ## Desenvolver e testar
 
-`node --test tests/*.test.cjs`
+- Executar testes: `node --test tests/*.test.cjs`
+- Gerar pacotes de distribuição para Chrome e Firefox: `python3 scripts/package.py`
 
-O manifest de origem usa background scripts para Firefox. O pacote Chrome gerado usa service_worker com importScripts, mantendo os mesmos módulos.
+A pasta `src/` contém a extensão pronta com suporte nativo a Manifest V3 para Chrome e Firefox. Em modo desenvolvedor, carregue diretamente a pasta `src/` no navegador (`chrome://extensions` ou `about:debugging`).

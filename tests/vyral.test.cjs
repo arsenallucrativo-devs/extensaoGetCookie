@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
-const dir = path.join(__dirname, '../ai-platform-poc');
+const dir = path.join(__dirname, '../src');
 const context = {URL, atob};
 vm.runInNewContext(fs.readFileSync(path.join(dir, 'vyral.js'), 'utf8'), context);
 const vyral = context.AiPlatformPoC.Vyral;

@@ -1,3 +1,12 @@
+// Suporte a Service Worker nativo (Google Chrome e Firefox MV3)
+if (typeof importScripts === 'function') {
+  try {
+    importScripts('gemini.js', 'vyral.js', 'leonardo.js');
+  } catch (e) {
+    console.error('[AI Platform PoC] Erro ao importar scripts no Service Worker:', e);
+  }
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "GET_SESSION_COOKIES") {
     const urlObj = new URL(sender.tab.url);

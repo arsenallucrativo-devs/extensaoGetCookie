@@ -20,15 +20,19 @@
     ],
     "service_worker": "background.js"
   },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "extensao-get-cookie@arsenal.local",
+      "strict_min_version": "109.0"
+    }
+  },
   "content_scripts": [
     {
       "matches": [
         "<all_urls>"
       ],
       "js": [
-        "theme.js",
         "json-builder.js",
-        "export.js",
         "modal.js",
         "gemini.js",
         "vyral.js",
